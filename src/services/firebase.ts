@@ -536,7 +536,7 @@ class ChatFirestoreService {
         passwordHash,
         name: identifier.trim(),
         user_type: 'demo',
-        rate_limit: 5,
+        rate_limit: initialRateLimit,
         prompts_used: 0,
         createdAt: now,
       });
@@ -648,6 +648,42 @@ class ChatFirestoreService {
       return { ok: false, remaining: 0, message: 'Unable to validate prompt quota right now.' };
     }
   }
+}
+
+function parseBooleanEnv(value: string | undefined): boolean {
+  if (!value) return false;
+  const normalized = value.trim().toLowerCase();
+  return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
+}
+
+function parseRateLimitEnv(value: string | undefined, fallback: number | null): number | null {
+  if (value === undefined || value === null || value === '') {
+    return fallback;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'none' || normalized === 'null' || normalized === 'unlimited' || normalized === 'off') {
+    return null;
+  }
+
+  const parsed = Number.parseInt(normalized, 10);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return fallback;
+  }
+
+  return parsed;
+}
+
+function resolveRateLimit(storedRateLimit: number | null, configuredRateLimit: number | null): number | null {
+  if (configuredRateLimit === null) {
+    return null;
+  }
+
+  if (storedRateLimit === null) {
+    return configuredRateLimit;
+  }
+
+  return Math.max(storedRateLimit, configuredRateLimit);
 }
 
 export { ChatMessage };
